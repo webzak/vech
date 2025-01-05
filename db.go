@@ -11,7 +11,7 @@ var (
 )
 
 type config struct {
-	vectorSize int
+	VectorSize int
 }
 
 // Db structrue is database instance
@@ -33,7 +33,7 @@ func CreateDb(opt *CreateDbOptions) (*Db, error) {
 	if opt.VectorSize < 0 {
 		return nil, ErrVectorSize
 	}
-	config := config{vectorSize: opt.VectorSize}
+	config := config{VectorSize: opt.VectorSize}
 	path := strings.TrimSuffix(opt.Path, "/")
 	db := Db{path: path, config: &config, storageType: opt.StorageType}
 	switch opt.StorageType {
@@ -81,8 +81,8 @@ func (db *Db) OpenCollection(name string) (*Collection, error) {
 	c := Collection{
 		indexStorage: id,
 		dataStorage:  dt,
-		vectorSize:   db.config.vectorSize,
-		recordSize:   db.config.vectorSize*4 + 16,
+		vectorSize:   db.config.VectorSize,
+		recordSize:   db.config.VectorSize*4 + 16,
 		dataSize:     dt.size(),
 		index:        make([]byte, idxSize),
 	}

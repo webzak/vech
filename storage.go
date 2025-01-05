@@ -12,7 +12,7 @@ import (
 var (
 	ErrFileAppend   = errors.New("error opening file for append")
 	ErrFileRead     = errors.New("error opening file for reading")
-	ErrFileSeek     = errors.New("error file seek")
+	ErrSeek         = errors.New("seek error")
 	ErrPathIsFile   = errors.New("path is expected to be directory, but points to the file")
 	ErrPathIsDir    = errors.New("path is expected to be file, but points to the directory")
 	ErrConfigAbsent = errors.New("config does not exist")
@@ -45,18 +45,15 @@ type fileStorage struct {
 
 func openFileStorage(path string) (*fileStorage, error) {
 	fs := fileStorage{path: path}
-	var create bool
 	stat, err := os.Stat(path)
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) {
 			return nil, err
 		}
-		create = true
-	}
-	if stat.IsDir() {
-		return nil, fmt.Errorf("%w: %s", ErrPathIsDir, path)
-	}
-	if !create {
+	} else {
+		if stat.IsDir() {
+			return nil, fmt.Errorf("%w: %s", ErrPathIsDir, path)
+		}
 		return &fs, nil
 	}
 	f, err := os.Create(path)
@@ -83,7 +80,7 @@ func (fs *fileStorage) writer() (io.Writer, error) {
 		return fs.wrf, nil
 	}
 	var err error
-	fs.wrf, err = os.OpenFile(fs.path, os.O_APPEND, 0644)
+	fs.wrf, err = os.OpenFile(fs.path, os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %s %s", ErrFileAppend, err.Error(), fs.path)
 	}
@@ -103,18 +100,21 @@ func (fs *fileStorage) reader(position int) (io.Reader, error) {
 	if position < 0 {
 		panic("negative file position")
 	}
-	if fs.rdf != nil {
-		return fs.rdf, nil
+	if position >= fs.size() {
+		return nil, fmt.Errorf("%w: position is greater than storage size", ErrSeek)
 	}
-	var err error
-	fs.rdf, err = os.Open(fs.path)
-	if err != nil {
-		return nil, fmt.Errorf("%w: %s %s", ErrFileRead, err.Error(), fs.path)
+
+	if fs.rdf == nil {
+		var err error
+		fs.rdf, err = os.Open(fs.path)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %s %s", ErrFileRead, err.Error(), fs.path)
+		}
 	}
 	if position > 0 {
-		_, err = fs.rdf.Seek(int64(position), 0)
+		_, err := fs.rdf.Seek(int64(position), 0)
 		if err != nil {
-			return nil, fmt.Errorf("%w: %s %s", ErrFileSeek, err.Error(), fs.path)
+			return nil, fmt.Errorf("%w: %s %s", ErrSeek, err.Error(), fs.path)
 		}
 	}
 	return fs.rdf, nil
@@ -162,7 +162,7 @@ func (ms *memoryStorage) reader(position int) (io.Reader, error) {
 		panic("negative file position")
 	}
 	if position >= len(ms.data) {
-		return nil, fmt.Errorf("%w: position is greater than storage size", ErrFileSeek)
+		return nil, fmt.Errorf("%w: position is greater than storage size", ErrSeek)
 	}
 	return bytes.NewReader(ms.data[position:]), nil
 }
@@ -175,7 +175,7 @@ func checkOrCreateDir(path string) error {
 	dir, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = os.Mkdir(path, 0644)
+			err = os.Mkdir(path, 0755)
 			if err != nil {
 				return fmt.Errorf("%w: %s", ErrCreateDir, err.Error())
 			}
@@ -207,7 +207,7 @@ func readConfig(path string) (*config, error) {
 }
 
 func saveConfig(path string, c *config) error {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0644)
+	f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("%w: %s %s", ErrCreateFile, err.Error(), path)
 	}
