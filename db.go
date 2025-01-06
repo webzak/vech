@@ -7,7 +7,7 @@ import (
 
 var (
 	ErrDbIsInitiated = errors.New("database is already initiated")
-	ErrVectorSize    = errors.New("vector size must be greater than zero")
+	ErrVectorSize    = errors.New("vector size error")
 )
 
 type config struct {

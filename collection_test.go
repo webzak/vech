@@ -12,9 +12,9 @@ type testdata struct {
 
 var chunks = []testdata{
 	{[]float32{0.1, 0.2, 0.3, 0.4}, []byte{1, 2, 3, 4}},
-	{[]float32{0.11, 0.22, 0.33, 0.44}, []byte{5, 6, 7, 8, 9, 10}},
-	{[]float32{0.111, 0.222, 0.333, 0.444}, []byte{11, 12}},
-	{[]float32{0.11111, 0.22222, 0.33333, 0.44444}, []byte{13, 14, 15, 16, 17}},
+	{[]float32{0.6, 0.2, 0.11, 0.66}, []byte{5, 6, 7, 8, 9, 10}},
+	{[]float32{0.3, 0.9, 0.73, 0.24}, []byte{11, 12}},
+	{[]float32{0.5, 0.4, 0.3, 0.2}, []byte{13, 14, 15, 16, 17}},
 }
 
 func addChunks(c *Collection, chunks []testdata) error {
@@ -50,14 +50,14 @@ func TestCollectionMemory(t *testing.T) {
 	}
 	order := []int{2, 1, 3, 0}
 	for _, n := range order {
-		vector, err := c.Vector(n)
+		idxrec, err := c.Index(n)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(chunks[n].vector, vector) {
-			t.Fatalf("vector %d read %v does not match to original: %v", n, vector, chunks[n].vector)
+		if !reflect.DeepEqual(chunks[n].vector, idxrec.Vector) {
+			t.Fatalf("vector %d read %v does not match to original: %v", n, idxrec.Vector, chunks[n].vector)
 		}
-		data, err := c.Data(n)
+		data, err := c.Data(idxrec.Position, idxrec.Size)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -104,14 +104,14 @@ func TestCollectionFileSystem(t *testing.T) {
 	}
 	order := []int{2, 1, 3, 0}
 	for _, n := range order {
-		vector, err := c.Vector(n)
+		idxrec, err := c.Index(n)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(chunks[n].vector, vector) {
-			t.Fatalf("vector %d read %v does not match to original: %v", n, vector, chunks[n].vector)
+		if !reflect.DeepEqual(chunks[n].vector, idxrec.Vector) {
+			t.Fatalf("vector %d read %v does not match to original: %v", n, idxrec.Vector, chunks[n].vector)
 		}
-		data, err := c.Data(n)
+		data, err := c.Data(idxrec.Position, idxrec.Size)
 		if err != nil {
 			t.Fatal(err)
 		}

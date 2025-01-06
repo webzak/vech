@@ -7,8 +7,16 @@ import (
 var (
 	ErrCorruptedDb     = errors.New("corrupted database error")
 	ErrIndexOutOfRange = errors.New("index out of range")
+	ErrDataPosition    = errors.New("data position is not wrong")
 	ErrReadData        = errors.New("error reading data")
 )
+
+// IndexRecord represents the data containing in the index
+type IndexRecord struct {
+	Position int       // data position from the start of the storage
+	Size     int       // data length
+	Vector   []float32 // vector
+}
 
 // Collection represents single collection
 type Collection struct {
@@ -62,30 +70,33 @@ func (c *Collection) Add(vector []float32, data []byte) error {
 	return nil
 }
 
-func (c *Collection) Vector(n int) ([]float32, error) {
+func (c *Collection) Index(n int) (*IndexRecord, error) {
 	if n < 0 {
 		return nil, ErrIndexOutOfRange
 	}
-	start := c.recordSize*n + 16
-	end := start + c.vectorSize*4
-	if end > len(c.index) {
-		return nil, ErrIndexOutOfRange
-	}
-	return bytesToFloat32Slice(c.index[start:end]), nil
-}
+	var ret IndexRecord
 
-func (c *Collection) Data(n int) ([]byte, error) {
-	if n < 0 || n >= c.Len() {
-		return nil, ErrIndexOutOfRange
-	}
 	start := c.recordSize * n
 	end := start + 16
 	if end > len(c.index) {
 		return nil, ErrIndexOutOfRange
 	}
-	pos := bytesToInt(c.index[start : start+8])
-	size := bytesToInt(c.index[start+8 : start+16])
+	ret.Position = bytesToInt(c.index[start : start+8])
+	ret.Size = bytesToInt(c.index[start+8 : start+16])
 
+	start = end
+	end = start + c.vectorSize*4
+	if end > len(c.index) {
+		return nil, ErrIndexOutOfRange
+	}
+	ret.Vector = bytesToFloat32Slice(c.index[start:end])
+	return &ret, nil
+}
+
+func (c *Collection) Data(pos, size int) ([]byte, error) {
+	if pos < 0 || size <= 0 || size >= c.dataStorage.size() {
+		return nil, ErrDataPosition
+	}
 	reader, err := c.dataStorage.reader(pos)
 	if err != nil {
 		return nil, err
