@@ -25,7 +25,7 @@ func (c *Collection) Len() int {
 	return len(c.index) / c.recordSize
 }
 
-func (c *Collection) AddRecord(vector []float32, data []byte) error {
+func (c *Collection) Add(vector []float32, data []byte) error {
 	ln := len(c.index)
 	end := ln + c.recordSize
 	vecbytes := float32SliceToByte(vector)
@@ -40,7 +40,7 @@ func (c *Collection) AddRecord(vector []float32, data []byte) error {
 	} else {
 		head := make([]byte, 16)
 		intToBytes(c.dataSize, head)
-		intToBytes(c.dataSize+len(data), head[8:])
+		intToBytes(len(data), head[8:])
 		c.index = append(c.index, head...)
 		c.index = append(c.index, vecbytes...)
 	}
@@ -67,7 +67,7 @@ func (c *Collection) Vector(n int) ([]float32, error) {
 		return nil, ErrIndexOutOfRange
 	}
 	start := c.recordSize*n + 16
-	end := start + c.vectorSize
+	end := start + c.vectorSize*4
 	if end > len(c.index) {
 		return nil, ErrIndexOutOfRange
 	}

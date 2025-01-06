@@ -111,11 +111,9 @@ func (fs *fileStorage) reader(position int) (io.Reader, error) {
 			return nil, fmt.Errorf("%w: %s %s", ErrFileRead, err.Error(), fs.path)
 		}
 	}
-	if position > 0 {
-		_, err := fs.rdf.Seek(int64(position), 0)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %s %s", ErrSeek, err.Error(), fs.path)
-		}
+	_, err := fs.rdf.Seek(int64(position), 0)
+	if err != nil {
+		return nil, fmt.Errorf("%w: %s %s", ErrSeek, err.Error(), fs.path)
 	}
 	return fs.rdf, nil
 }
